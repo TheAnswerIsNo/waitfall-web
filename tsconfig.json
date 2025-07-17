@@ -1,0 +1,7 @@
+{
+  "extends": "./src/.umi/tsconfig.json",
+  "compilerOptions": {
+    "noUnusedLocals": false, // 不检查局部未使用变量
+    "noUnusedParameters": false // 不检查未使用的参数
+  }
+}
