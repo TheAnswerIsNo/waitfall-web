@@ -1,4 +1,5 @@
-import { ResponseCode } from '@/constants';
+import { LocalStorageKey, ResponseCode } from '@/constants';
+import { login } from '@/services/Login/api';
 import { LockOutlined, MobileOutlined, UserOutlined } from '@ant-design/icons';
 import {
   LoginForm,
@@ -7,7 +8,7 @@ import {
   ProFormCheckbox,
   ProFormText,
 } from '@ant-design/pro-components';
-import { history, request } from '@umijs/max';
+import { history, useModel } from '@umijs/max';
 import { message, Tabs, theme } from 'antd';
 import { useState } from 'react';
 
@@ -16,6 +17,7 @@ type LoginType = 'phone' | 'account';
 const LoginPage: React.FC = () => {
   const { token } = theme.useToken();
   const [loginType, setLoginType] = useState<LoginType>('account');
+  const { refresh } = useModel('@@initialState');
 
   const handleTabChange = (activeKey: LoginType) => {
     if (activeKey === 'account') {
@@ -27,16 +29,15 @@ const LoginPage: React.FC = () => {
   };
 
   const handleLogin = async (value: any) => {
-    const res = await request('/login', {
-      method: 'POST',
-      data: value,
-    });
+    const res = await login(value);
     if (res.code === ResponseCode.SUCCESS) {
+      localStorage.setItem(LocalStorageKey.USER_INFO, JSON.stringify(res.data));
       history.push('/');
       message.open({
         type: 'success',
         content: res.msg,
       });
+      refresh();
     } else {
       message.open({
         type: 'error',

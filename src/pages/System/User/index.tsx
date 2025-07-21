@@ -127,13 +127,8 @@ const TableList: React.FC<unknown> = () => {
   ];
 
   return (
-    <PageContainer
-      header={{
-        title: '用户管理',
-      }}
-    >
+    <PageContainer title={false}>
       <ProTable<UserListVO>
-        headerTitle="查询表格"
         actionRef={actionRef}
         rowKey="id"
         toolBarRender={() => [

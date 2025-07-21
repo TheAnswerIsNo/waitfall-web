@@ -2,12 +2,12 @@
 import { DEFAULT_NAME } from '@/constants';
 import { useState } from 'react';
 
-const useUser = () => {
-  const [name, setName] = useState<string>(DEFAULT_NAME);
+const useTitle = () => {
+  const [title, setTitle] = useState<string>(DEFAULT_NAME);
   return {
-    name,
-    setName,
+    title,
+    setTitle,
   };
 };
 
-export default useUser;
+export default useTitle;

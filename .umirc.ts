@@ -15,9 +15,7 @@ export default defineConfig({
   request: {
     dataField: 'data',
   },
-  layout: {
-    title: '等秋后台管理系统',
-  },
+  layout: {},
   routes: [
     {
       path: '/',

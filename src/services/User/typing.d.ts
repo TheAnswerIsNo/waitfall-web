@@ -17,3 +17,13 @@ interface UserDetailVO {
   unitId?: string;
   roleIds?: string[];
 }
+
+interface UserInfo {
+  id?: string;
+  avatar?: string;
+  nickName?: string;
+  account?: string;
+  unitId?: string;
+  createdBy?: string;
+  createTime?: string;
+}

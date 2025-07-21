@@ -1,4 +1,4 @@
-export const DEFAULT_NAME = 'Umi Max';
+export const DEFAULT_NAME = '等秋后台管理系统';
 
 export const ResponseCode = {
   /** 未登录状态 */
@@ -10,4 +10,13 @@ export const ResponseCode = {
   /** 请求参数错误 */
   PARAM_ERROR: 400,
   // 可按需添加更多响应码
+};
+
+export const LOGIN_URL = '/login';
+
+export const LocalStorageKey = {
+  /** 登录 token */
+  TOKEN: 'token',
+  /** 用户信息 */
+  USER_INFO: 'user_info',
 };
