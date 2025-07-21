@@ -3,6 +3,7 @@ import { logout } from '@/services/Login/api';
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
 import { Avatar, Dropdown, MenuProps, message, Space } from 'antd';
+
 const UserMenu: React.FC = () => {
   const { userInfo } = useModel('@@initialState', (initialState: any) => ({
     userInfo: initialState.userInfo,

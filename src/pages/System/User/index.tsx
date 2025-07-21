@@ -15,7 +15,7 @@ const TableList: React.FC<unknown> = () => {
 
   const handleDeleteUser = async () => {};
 
-  const columns: ProColumns<UserListVO>[] = [
+  const columns: ProColumns<User.UserListVO>[] = [
     {
       title: 'id',
       dataIndex: 'id',
@@ -128,7 +128,7 @@ const TableList: React.FC<unknown> = () => {
 
   return (
     <PageContainer title={false}>
-      <ProTable<UserListVO>
+      <ProTable<User.UserListVO>
         actionRef={actionRef}
         rowKey="id"
         toolBarRender={() => [

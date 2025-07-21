@@ -1,5 +1,6 @@
+import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { history, RunTimeLayoutConfig, type RequestConfig } from '@umijs/max';
-import { Button, message, Result } from 'antd';
+import { Button, Dropdown, MenuProps, message, Result } from 'antd';
 import {
   DEFAULT_NAME,
   LocalStorageKey,
@@ -10,7 +11,7 @@ import { logout } from './services/Login/api';
 
 // 全局初始化数据配置，用于 Layout 用户信息和权限初始化
 // 更多信息见文档：https://umijs.org/docs/api/runtime-config#getinitialstate
-export async function getInitialState(): Promise<{ userInfo: UserInfo }> {
+export async function getInitialState(): Promise<{ userInfo: User.UserInfo }> {
   let userInfo;
   const fetchUserInfo = async () => {
     try {
@@ -35,8 +36,6 @@ export async function getInitialState(): Promise<{ userInfo: UserInfo }> {
 }
 
 export const layout: RunTimeLayoutConfig = (initialState) => {
-  console.log(initialState);
-
   const handleLogout = async () => {
     const res = await logout();
     if (res.code === ResponseCode.SUCCESS) {
@@ -54,6 +53,22 @@ export const layout: RunTimeLayoutConfig = (initialState) => {
         content: res.msg,
       });
     }
+  };
+
+  const menu: MenuProps = {
+    items: [
+      {
+        label: '个人信息',
+        key: 'profile',
+        icon: <UserOutlined />,
+      },
+      {
+        label: '退出登录',
+        key: 'logout',
+        icon: <LogoutOutlined />,
+        onClick: handleLogout,
+      },
+    ],
   };
 
   const userInfo: any = initialState?.initialState;
@@ -83,15 +98,13 @@ export const layout: RunTimeLayoutConfig = (initialState) => {
         'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
       title: userInfo?.nickname,
       render: (_, defaultDom) => {
-        return <div>{defaultDom}</div>;
+        return (
+          <Dropdown menu={menu} trigger={['hover']}>
+            {defaultDom}
+          </Dropdown>
+        );
       },
     },
-    logout: () => {
-      handleLogout();
-    },
-    // rightRender: () => {
-    //   return <UserMenu />
-    // },
   };
 };
 
