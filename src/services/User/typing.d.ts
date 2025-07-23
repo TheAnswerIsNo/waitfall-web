@@ -1,7 +1,7 @@
 declare namespace User {
   interface UserListVO {
     id?: string;
-    nickName?: string;
+    nickname?: string;
     account?: string;
     unitId?: string;
     unitName?: string;
@@ -13,7 +13,7 @@ declare namespace User {
 
   interface UserDetailVO {
     id?: string;
-    nickName?: string;
+    nickname?: string;
     account?: string;
     unitId?: string;
     roleIds?: string[];
@@ -22,10 +22,19 @@ declare namespace User {
   interface UserInfo {
     id?: string;
     avatar?: string;
-    nickName?: string;
+    nickname?: string;
     account?: string;
     unitId?: string;
     createdBy?: string;
     createTime?: string;
+  }
+
+  interface CreateUserDTO {
+    account: string;
+    password: string;
+    nickname: string;
+    unitId: string;
+    enabled: boolean;
+    roleIds: string[];
   }
 }

@@ -1,6 +1,6 @@
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { history, RunTimeLayoutConfig, type RequestConfig } from '@umijs/max';
-import { Button, Dropdown, MenuProps, message, Result } from 'antd';
+import { Button, Dropdown, message, Result } from 'antd';
 import {
   DEFAULT_NAME,
   LocalStorageKey,
@@ -36,39 +36,13 @@ export async function getInitialState(): Promise<{ userInfo: User.UserInfo }> {
 }
 
 export const layout: RunTimeLayoutConfig = (initialState) => {
-  const handleLogout = async () => {
-    const res = await logout();
-    if (res.code === ResponseCode.SUCCESS) {
+  const handleLogout = () => {
+    logout().then(() => {
       // 清除本地存储的 token
       localStorage.removeItem(LocalStorageKey.TOKEN);
       // 跳转登录页面
       history.push(LOGIN_URL);
-      message.open({
-        type: 'success',
-        content: res.msg,
-      });
-    } else {
-      message.open({
-        type: 'error',
-        content: res.msg,
-      });
-    }
-  };
-
-  const menu: MenuProps = {
-    items: [
-      {
-        label: '个人信息',
-        key: 'profile',
-        icon: <UserOutlined />,
-      },
-      {
-        label: '退出登录',
-        key: 'logout',
-        icon: <LogoutOutlined />,
-        onClick: handleLogout,
-      },
-    ],
+    });
   };
 
   const userInfo: any = initialState?.initialState;
@@ -99,7 +73,24 @@ export const layout: RunTimeLayoutConfig = (initialState) => {
       title: userInfo?.nickname,
       render: (_, defaultDom) => {
         return (
-          <Dropdown menu={menu} trigger={['hover']}>
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  label: '个人信息',
+                  key: 'profile',
+                  icon: <UserOutlined />,
+                },
+                {
+                  label: '退出登录',
+                  key: 'logout',
+                  icon: <LogoutOutlined />,
+                  onClick: handleLogout,
+                },
+              ],
+            }}
+            trigger={['hover']}
+          >
             {defaultDom}
           </Dropdown>
         );
@@ -132,20 +123,24 @@ export const request: RequestConfig = {
             history.push(LOGIN_URL);
             break;
           default:
-            message.error(error.info.msg);
+            message.open({
+              type: 'error',
+              content: error.info.msg,
+            });
             break;
         }
-      } else if (error.response) {
-        // Axios 的错误
-        // 请求成功发出且服务器也响应了状态码，但状态代码超出了 2xx 的范围
-        // TODO 处理各种状态码
-        message.error(`请求响应出错，状态码${error.response.status}`);
       } else if (error.request) {
         // 请求已经成功发起，但没有收到响应
-        message.error('服务器无响应，请重试！');
+        message.open({
+          type: 'error',
+          content: '服务器无响应，请重试！',
+        });
       } else {
         // 发送请求时出了点问题
-        message.error('网络异常！');
+        message.open({
+          type: 'error',
+          content: '网络异常！',
+        });
       }
     },
   },
@@ -173,17 +168,48 @@ export const request: RequestConfig = {
         localStorage.setItem(LocalStorageKey.TOKEN, token);
       }
       const { code, msg } = response.data as Result;
-      // 判断响应成功的
-      if (code === ResponseCode.NOT_LOGIN) {
-        // 跳转登录页面
-        message.open({
-          type: 'error',
-          content: msg,
-        });
-        history.push(LOGIN_URL);
-        return response;
+      switch (code) {
+        case ResponseCode.SUCCESS:
+          if (msg !== null) {
+            message.open({
+              type: 'success',
+              content: msg,
+            });
+            break;
+          }
+        case ResponseCode.NOT_LOGIN:
+          // 跳转登录页面
+          message.open({
+            type: 'error',
+            content: msg,
+          });
+          history.push(LOGIN_URL);
+          break;
+        case ResponseCode.BUSINESS_ERROR:
+          message.open({
+            type: 'error',
+            content: msg,
+          });
+          break;
+        case ResponseCode.PARAM_ERROR:
+          message.open({
+            type: 'error',
+            content: msg,
+          });
+          break;
+        case ResponseCode.SERVER_ERROR:
+          message.open({
+            type: 'error',
+            content: '服务器异常',
+          });
+          break;
+        case ResponseCode.ACCESS_DENIED:
+          message.open({
+            type: 'error',
+            content: msg,
+          });
+          break;
       }
-
       return response;
     },
   ],

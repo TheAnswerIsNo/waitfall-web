@@ -1,4 +1,4 @@
-import { LocalStorageKey, ResponseCode } from '@/constants';
+import { LocalStorageKey } from '@/constants';
 import { login } from '@/services/Login/api';
 import { LockOutlined, MobileOutlined, UserOutlined } from '@ant-design/icons';
 import {
@@ -17,7 +17,7 @@ type LoginType = 'phone' | 'account';
 const LoginPage: React.FC = () => {
   const { token } = theme.useToken();
   const [loginType, setLoginType] = useState<LoginType>('account');
-  const { refresh } = useModel('@@initialState');
+  const { refresh, setInitialState } = useModel('@@initialState');
 
   const handleTabChange = (activeKey: LoginType) => {
     if (activeKey === 'account') {
@@ -28,22 +28,12 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleLogin = async (value: any) => {
-    const res = await login(value);
-    if (res.code === ResponseCode.SUCCESS) {
+  const handleLogin = (value: any) => {
+    login(value).then((res) => {
       localStorage.setItem(LocalStorageKey.USER_INFO, JSON.stringify(res.data));
       history.push('/');
-      message.open({
-        type: 'success',
-        content: res.msg,
-      });
       refresh();
-    } else {
-      message.open({
-        type: 'error',
-        content: res.msg,
-      });
-    }
+    });
   };
 
   return (

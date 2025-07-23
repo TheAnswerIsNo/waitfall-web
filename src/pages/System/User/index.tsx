@@ -1,5 +1,4 @@
-import { ResponseCode } from '@/constants';
-import { queryUserList } from '@/services/User/api';
+import { deleteUser, queryUserList } from '@/services/User/api';
 import {
   ActionType,
   PageContainer,
@@ -8,12 +7,26 @@ import {
 } from '@ant-design/pro-components';
 import { Button, message, Space } from 'antd';
 import React, { useRef, useState } from 'react';
+import CreateForm from './components/CreateForm';
 
-const TableList: React.FC<unknown> = () => {
+const UserList: React.FC<unknown> = () => {
   const actionRef = useRef<ActionType>();
   const [selectedRowsState, setSelectedRows] = useState<React.Key[]>([]);
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
 
-  const handleDeleteUser = async () => {};
+  const handleDeleteUser = () => {
+    if (selectedRowsState.length === 0) {
+      message.open({
+        content: '请选择要删除的用户',
+        type: 'warning',
+      });
+      return;
+    }
+    deleteUser(selectedRowsState).then(() => {
+      actionRef.current?.reload();
+      setSelectedRows([]);
+    });
+  };
 
   const columns: ProColumns<User.UserListVO>[] = [
     {
@@ -132,7 +145,7 @@ const TableList: React.FC<unknown> = () => {
         actionRef={actionRef}
         rowKey="id"
         toolBarRender={() => [
-          <Button key={1} type="primary">
+          <Button key={1} type="primary" onClick={() => setModalVisible(true)}>
             添加
           </Button>,
           <Button
@@ -145,22 +158,10 @@ const TableList: React.FC<unknown> = () => {
           </Button>,
         ]}
         request={async (params) => {
-          const { data, msg, code } = await queryUserList({
-            ...params,
-          });
-          if (code === ResponseCode.SUCCESS) {
-            return {
-              data: data?.data,
-            };
-          } else {
-            message.open({
-              type: 'error',
-              content: msg,
-            });
-            return {
-              data: [],
-            };
-          }
+          const { data } = await queryUserList(params);
+          return {
+            data: data?.data || [],
+          };
         }}
         columns={columns}
         rowSelection={{
@@ -172,8 +173,13 @@ const TableList: React.FC<unknown> = () => {
         options={false}
         tableAlertRender={false}
       />
+      <CreateForm
+        modalVisible={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        onRefreshTable={() => actionRef.current?.reload()}
+      ></CreateForm>
     </PageContainer>
   );
 };
 
-export default TableList;
+export default UserList;

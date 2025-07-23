@@ -12,3 +12,19 @@ export async function queryUserList(params: {
     },
   });
 }
+
+export async function deleteUser(ids: any[]) {
+  return request<Result>('/user/delete', {
+    method: 'POST',
+    data: ids,
+  });
+}
+
+export async function createUser(params: User.CreateUserDTO) {
+  return request<Result>('/user/add', {
+    method: 'POST',
+    data: {
+      ...params,
+    },
+  });
+}

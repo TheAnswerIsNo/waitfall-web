@@ -12,3 +12,9 @@ export async function logout() {
     method: 'POST',
   });
 }
+
+export async function fetchUserInfo() {
+  return request<Result>('/get/info', {
+    method: 'GET',
+  });
+}

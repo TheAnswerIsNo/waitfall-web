@@ -38,9 +38,15 @@ export default defineConfig({
       component: './Access',
     },
     {
-      name: ' CRUD 示例',
-      path: '/table',
-      component: './Table',
+      name: 'AI对话',
+      path: '/ai',
+      redirect: '/chatAi',
+    },
+    {
+      name: 'AI对话',
+      path: '/chatAi',
+      component: './Chat',
+      layout: false,
     },
     {
       name: '系统设置',
