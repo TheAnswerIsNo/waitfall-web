@@ -40,11 +40,11 @@ export default defineConfig({
     {
       name: 'AI对话',
       path: '/ai',
-      redirect: '/chatAi',
+      redirect: '/chat',
     },
     {
       name: 'AI对话',
-      path: '/chatAi',
+      path: '/chat',
       component: './Chat',
       layout: false,
     },
@@ -78,5 +78,7 @@ export default defineConfig({
       component: './404',
     },
   ],
+
   npmClient: 'pnpm',
+  tailwindcss: {},
 });

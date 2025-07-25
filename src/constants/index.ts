@@ -1,5 +1,11 @@
 export const DEFAULT_NAME = '等秋后台管理系统';
 
+export const LOGO_URL =
+  'https://img.alicdn.com/tfs/TB1YHEpwUT1gK0jSZFhXXaAtVXa-28-27.svg';
+
+export const AVATAR_DEFAULT_URL =
+  'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png';
+
 export const ResponseCode = {
   /** 未登录状态 */
   NOT_LOGIN: 401,

@@ -1,12 +1,12 @@
+import UserMenu from '@/components/UserMenu';
+import { AVATAR_DEFAULT_URL, LOGO_URL } from '@/constants';
 import {
   AppstoreAddOutlined,
-  CloudUploadOutlined,
   CommentOutlined,
   CopyOutlined,
   DeleteOutlined,
   DislikeOutlined,
   EditOutlined,
-  EllipsisOutlined,
   FileSearchOutlined,
   HeartOutlined,
   LikeOutlined,
@@ -16,9 +16,9 @@ import {
   ReloadOutlined,
   RollbackOutlined,
   ScheduleOutlined,
-  ShareAltOutlined,
   SmileOutlined,
 } from '@ant-design/icons';
+import { ProLayout } from '@ant-design/pro-components';
 import {
   Attachments,
   Bubble,
@@ -29,11 +29,20 @@ import {
   useXAgent,
   useXChat,
 } from '@ant-design/x';
-import { history } from '@umijs/max';
-import { Avatar, Button, Flex, type GetProp, Space, Spin, message } from 'antd';
-import { createStyles } from 'antd-style';
+import { history, useModel } from '@umijs/max';
+import {
+  Button,
+  Flex,
+  type GetProp,
+  Image,
+  Space,
+  Spin,
+  Tag,
+  message,
+} from 'antd';
 import dayjs from 'dayjs';
 import React, { useEffect, useRef, useState } from 'react';
+import RenameForm from './components/RenameForm';
 
 type BubbleDataType = {
   role: string;
@@ -144,127 +153,9 @@ const SENDER_PROMPTS: GetProp<typeof Prompts, 'items'> = [
   },
 ];
 
-const useStyle = createStyles(({ token, css }) => {
-  return {
-    layout: css`
-      width: 100%;
-      min-width: 1000px;
-      height: 100vh;
-      display: flex;
-      background: ${token.colorBgContainer};
-      font-family: AlibabaPuHuiTi, ${token.fontFamily}, sans-serif;
-    `,
-    // sider 样式
-    sider: css`
-      background: ${token.colorBgLayout}80;
-      width: 280px;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      padding: 0 12px;
-      box-sizing: border-box;
-    `,
-    logo: css`
-      display: flex;
-      align-items: center;
-      justify-content: start;
-      padding: 0 24px;
-      box-sizing: border-box;
-      gap: 8px;
-      margin: 24px 0;
-
-      span {
-        font-weight: bold;
-        color: ${token.colorText};
-        font-size: 16px;
-      }
-    `,
-    addBtn: css`
-      background: #1677ff0f;
-      border: 1px solid #1677ff34;
-      height: 40px;
-    `,
-    conversations: css`
-      flex: 1;
-      overflow-y: auto;
-      margin-top: 12px;
-      padding: 0;
-
-      .ant-conversations-list {
-        padding-inline-start: 0;
-      }
-    `,
-    siderFooter: css`
-      border-top: 1px solid ${token.colorBorderSecondary};
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    `,
-    // chat list 样式
-    chat: css`
-      height: 100%;
-      width: 100%;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      padding-block: ${token.paddingLG}px;
-      gap: 16px;
-    `,
-    chatPrompt: css`
-      .ant-prompts-label {
-        color: #000000e0 !important;
-      }
-      .ant-prompts-desc {
-        color: #000000a6 !important;
-        width: 100%;
-      }
-      .ant-prompts-icon {
-        color: #000000a6 !important;
-      }
-    `,
-    chatList: css`
-      flex: 1;
-      overflow: auto;
-    `,
-    loadingMessage: css`
-      background-image: linear-gradient(
-        90deg,
-        #ff6b23 0%,
-        #af3cb8 31%,
-        #53b6ff 89%
-      );
-      background-size: 100% 2px;
-      background-repeat: no-repeat;
-      background-position: bottom;
-    `,
-    placeholder: css`
-      padding-top: 32px;
-    `,
-    // sender 样式
-    sender: css`
-      width: 100%;
-      max-width: 700px;
-      margin: 0 auto;
-    `,
-    speechButton: css`
-      font-size: 18px;
-      color: ${token.colorText} !important;
-    `,
-    senderPrompt: css`
-      width: 100%;
-      max-width: 700px;
-      margin: 0 auto;
-      color: ${token.colorText};
-    `,
-  };
-});
-
 const Independent: React.FC = () => {
-  const { styles } = useStyle();
+  const { initialState } = useModel('@@initialState');
   const abortController = useRef<AbortController>(null);
-
-  // ==================== State ====================
   const [messageHistory, setMessageHistory] = useState<Record<string, any>>({});
 
   const [conversations, setConversations] = useState(
@@ -280,6 +171,8 @@ const Independent: React.FC = () => {
   >([]);
 
   const [inputValue, setInputValue] = useState('');
+  const [renameFormOpen, setRenameFormOpen] = useState(false);
+  const [renameFormValue, setRenameFormValue] = useState({ id: '', value: '' });
 
   /**
    * 🔔 Please replace the BASE_URL, PATH, MODEL, API_KEY with your own values.
@@ -346,7 +239,6 @@ const Independent: React.FC = () => {
     },
   });
 
-  // ==================== Event ====================
   const onSubmit = (val: string) => {
     if (!val) return;
 
@@ -363,273 +255,6 @@ const Independent: React.FC = () => {
     });
   };
 
-  // ==================== Nodes ====================
-  const chatSider = (
-    <div className={styles.sider}>
-      {/* 🌟 Logo */}
-      <div className={styles.logo}>
-        <img
-          src="https://mdn.alipayobjects.com/huamei_iwk9zp/afts/img/A*eco6RrQhxbMAAAAAAAAAAAAADgCCAQ/original"
-          draggable={false}
-          alt="logo"
-          width={24}
-          height={24}
-        />
-        <span>Ant Design X</span>
-      </div>
-
-      {/* 🌟 添加会话 */}
-      <Button
-        onClick={() => {
-          const now = dayjs().valueOf().toString();
-          setConversations([
-            {
-              key: now,
-              label: `New Conversation ${conversations.length + 1}`,
-              group: 'Today',
-            },
-            ...conversations,
-          ]);
-          setCurConversation(now);
-          setMessages([]);
-        }}
-        type="link"
-        className={styles.addBtn}
-        icon={<PlusOutlined />}
-      >
-        New Conversation
-      </Button>
-
-      {/* 🌟 会话管理 */}
-      <Conversations
-        items={conversations}
-        className={styles.conversations}
-        activeKey={curConversation}
-        onActiveChange={async (val) => {
-          abortController.current?.abort();
-          // The abort execution will trigger an asynchronous requestFallback, which may lead to timing issues.
-          // In future versions, the sessionId capability will be added to resolve this problem.
-          setTimeout(() => {
-            setCurConversation(val);
-            setMessages(messageHistory?.[val] || []);
-          }, 100);
-        }}
-        groupable
-        styles={{ item: { padding: '0 8px' } }}
-        menu={(conversation) => ({
-          items: [
-            {
-              label: 'Rename',
-              key: 'rename',
-              icon: <EditOutlined />,
-            },
-            {
-              label: 'Delete',
-              key: 'delete',
-              icon: <DeleteOutlined />,
-              danger: true,
-              onClick: () => {
-                const newList = conversations.filter(
-                  (item) => item.key !== conversation.key,
-                );
-                const newKey = newList?.[0]?.key;
-                setConversations(newList);
-                // The delete operation modifies curConversation and triggers onActiveChange, so it needs to be executed with a delay to ensure it overrides correctly at the end.
-                // This feature will be fixed in a future version.
-                setTimeout(() => {
-                  if (conversation.key === curConversation) {
-                    setCurConversation(newKey);
-                    setMessages(messageHistory?.[newKey] || []);
-                  }
-                }, 200);
-              },
-            },
-          ],
-        })}
-      />
-
-      <div className={styles.siderFooter}>
-        <Avatar size={24} />
-        <Button
-          type="text"
-          icon={<RollbackOutlined />}
-          onClick={() => history.back()}
-        />
-      </div>
-    </div>
-  );
-  const chatList = (
-    <div className={styles.chatList}>
-      {messages?.length ? (
-        /* 🌟 消息列表 */
-        <Bubble.List
-          items={messages?.map((i) => ({
-            ...i.message,
-            classNames: {
-              content: i.status === 'loading' ? styles.loadingMessage : '',
-            },
-            typing:
-              i.status === 'loading'
-                ? { step: 5, interval: 20, suffix: <>💗</> }
-                : false,
-          }))}
-          style={{
-            height: '100%',
-            paddingInline: 'calc(calc(100% - 700px) /2)',
-          }}
-          roles={{
-            assistant: {
-              placement: 'start',
-              footer: (
-                <div style={{ display: 'flex' }}>
-                  <Button type="text" size="small" icon={<ReloadOutlined />} />
-                  <Button type="text" size="small" icon={<CopyOutlined />} />
-                  <Button type="text" size="small" icon={<LikeOutlined />} />
-                  <Button type="text" size="small" icon={<DislikeOutlined />} />
-                </div>
-              ),
-              loadingRender: () => <Spin size="small" />,
-            },
-            user: { placement: 'end' },
-          }}
-        />
-      ) : (
-        <Space
-          direction="vertical"
-          size={16}
-          style={{ paddingInline: 'calc(calc(100% - 700px) /2)' }}
-          className={styles.placeholder}
-        >
-          <Welcome
-            variant="borderless"
-            icon="https://mdn.alipayobjects.com/huamei_iwk9zp/afts/img/A*s5sNRo5LjfQAAAAAAAAAAAAADgCCAQ/fmt.webp"
-            title="Hello, I'm Ant Design X"
-            description="Base on Ant Design, AGI product interface solution, create a better intelligent vision~"
-            extra={
-              <Space>
-                <Button icon={<ShareAltOutlined />} />
-                <Button icon={<EllipsisOutlined />} />
-              </Space>
-            }
-          />
-          <Flex gap={16}>
-            <Prompts
-              items={[HOT_TOPICS]}
-              styles={{
-                list: { height: '100%' },
-                item: {
-                  flex: 1,
-                  backgroundImage:
-                    'linear-gradient(123deg, #e5f4ff 0%, #efe7ff 100%)',
-                  borderRadius: 12,
-                  border: 'none',
-                },
-                subItem: { padding: 0, background: 'transparent' },
-              }}
-              onItemClick={(info) => {
-                onSubmit(info.data.description as string);
-              }}
-              className={styles.chatPrompt}
-            />
-
-            <Prompts
-              items={[DESIGN_GUIDE]}
-              styles={{
-                item: {
-                  flex: 1,
-                  backgroundImage:
-                    'linear-gradient(123deg, #e5f4ff 0%, #efe7ff 100%)',
-                  borderRadius: 12,
-                  border: 'none',
-                },
-                subItem: { background: '#ffffffa6' },
-              }}
-              onItemClick={(info) => {
-                onSubmit(info.data.description as string);
-              }}
-              className={styles.chatPrompt}
-            />
-          </Flex>
-        </Space>
-      )}
-    </div>
-  );
-  const senderHeader = (
-    <Sender.Header
-      title="Upload File"
-      open={attachmentsOpen}
-      onOpenChange={setAttachmentsOpen}
-      styles={{ content: { padding: 0 } }}
-    >
-      <Attachments
-        beforeUpload={() => false}
-        items={attachedFiles}
-        onChange={(info) => setAttachedFiles(info.fileList)}
-        placeholder={(type) =>
-          type === 'drop'
-            ? { title: 'Drop file here' }
-            : {
-                icon: <CloudUploadOutlined />,
-                title: 'Upload files',
-                description: 'Click or drag files to this area to upload',
-              }
-        }
-      />
-    </Sender.Header>
-  );
-  const chatSender = (
-    <>
-      {/* 🌟 提示词 */}
-      <Prompts
-        items={SENDER_PROMPTS}
-        onItemClick={(info) => {
-          onSubmit(info.data.description as string);
-        }}
-        styles={{
-          item: { padding: '6px 12px' },
-        }}
-        className={styles.senderPrompt}
-      />
-      {/* 🌟 输入框 */}
-      <Sender
-        value={inputValue}
-        header={senderHeader}
-        onSubmit={() => {
-          onSubmit(inputValue);
-          setInputValue('');
-        }}
-        onChange={setInputValue}
-        onCancel={() => {
-          abortController.current?.abort();
-        }}
-        prefix={
-          <Button
-            type="text"
-            icon={<PaperClipOutlined style={{ fontSize: 18 }} />}
-            onClick={() => setAttachmentsOpen(!attachmentsOpen)}
-          />
-        }
-        loading={loading}
-        className={styles.sender}
-        allowSpeech
-        actions={(_, info) => {
-          const { SendButton, LoadingButton, SpeechButton } = info.components;
-          return (
-            <Flex gap={4}>
-              <SpeechButton className={styles.speechButton} />
-              {loading ? (
-                <LoadingButton type="default" />
-              ) : (
-                <SendButton type="primary" />
-              )}
-            </Flex>
-          );
-        }}
-        placeholder="Ask or input / use skills"
-      />
-    </>
-  );
-
   useEffect(() => {
     // history mock
     if (messages?.length) {
@@ -640,16 +265,289 @@ const Independent: React.FC = () => {
     }
   }, [messages]);
 
-  // ==================== Render =================
   return (
-    <div className={styles.layout}>
-      {chatSider}
-
-      <div className={styles.chat}>
-        {chatList}
-        {chatSender}
-      </div>
-    </div>
+    <ProLayout
+      title="小秋"
+      logo={LOGO_URL}
+      logoStyle={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '10px',
+        borderBottom: 'none',
+      }}
+      layout="side"
+      onMenuHeaderClick={() => {
+        history.push('/');
+      }}
+      avatarProps={{
+        src: initialState?.avatar || AVATAR_DEFAULT_URL,
+        title: initialState?.nickname,
+        render: (_, defaultDom) => {
+          return <UserMenu defaultDom={defaultDom} />;
+        },
+      }}
+      actionsRender={() => (
+        <Button
+          size="large"
+          type="text"
+          icon={<RollbackOutlined />}
+          onClick={() => history.back()}
+          className="!bg-transparent !caret-inherit"
+        />
+      )}
+      collapsedButtonRender={false}
+      contentStyle={{ height: '100vh', backgroundColor: 'white' }}
+      menuExtraRender={() => {
+        return (
+          <Flex className="mt-4 justify-between">
+            <Tag
+              color="gold"
+              icon={<CommentOutlined />}
+              className="h-[32px] w-[120px] text-center flex items-center justify-center"
+            >
+              历史对话
+            </Tag>
+            <Button
+              onClick={() => {
+                const now = dayjs().valueOf().toString();
+                setConversations([
+                  {
+                    key: now,
+                    label: `New Conversation ${conversations.length + 1}`,
+                    group: 'Today',
+                  },
+                  ...conversations,
+                ]);
+                setCurConversation(now);
+                setMessages([]);
+              }}
+              type="link"
+              className="bg-[#1677ff0f] h-[32px] w-[120px] border-solid border-[#1677ff34] border-[1px]"
+              icon={<PlusOutlined />}
+            ></Button>
+          </Flex>
+        );
+      }}
+      menuContentRender={() => {
+        return (
+          <>
+            {/* 🌟 会话管理 */}
+            <Conversations
+              items={conversations}
+              className="flex-1 overflow-y-auto mt-[12px] p-0 "
+              activeKey={curConversation}
+              onActiveChange={async (val) => {
+                // 终止请求
+                abortController.current?.abort();
+                // The abort execution will trigger an asynchronous requestFallback, which may lead to timing issues.
+                // In future versions, the sessionId capability will be added to resolve this problem.
+                setTimeout(() => {
+                  setCurConversation(val);
+                  setMessages(messageHistory?.[val] || []);
+                }, 100);
+              }}
+              groupable
+              styles={{ item: { padding: '0 8px' } }}
+              menu={(conversation) => ({
+                items: [
+                  {
+                    label: '重命名',
+                    key: 'rename',
+                    icon: <EditOutlined />,
+                    onClick: () => {
+                      setRenameFormValue({
+                        id: conversation.key,
+                        value: conversation.label?.valueOf() as string,
+                      });
+                      setRenameFormOpen(true);
+                    },
+                  },
+                  {
+                    label: '删除',
+                    key: 'delete',
+                    icon: <DeleteOutlined />,
+                    danger: true,
+                    onClick: () => {
+                      const newList = conversations.filter(
+                        (item) => item.key !== conversation.key,
+                      );
+                      const newKey = newList?.[0]?.key;
+                      setConversations(newList);
+                      setTimeout(() => {
+                        if (conversation.key === curConversation) {
+                          setCurConversation(newKey);
+                          setMessages(messageHistory?.[newKey] || []);
+                        }
+                      }, 200);
+                    },
+                  },
+                ],
+              })}
+            />
+          </>
+        );
+      }}
+    >
+      <Flex className="flex-col" style={{ height: '100vh' }}>
+        <div className="flex-1 overflow-auto">
+          {messages?.length ? (
+            /* 🌟 消息列表 */
+            <Bubble.List
+              items={messages?.map((i) => ({
+                ...i.message,
+                classNames: {
+                  content:
+                    i.status === 'loading'
+                      ? 'bg-size-[100%_2px] bg-no-repeat bg-bottom'
+                      : '',
+                },
+                typing:
+                  i.status === 'loading'
+                    ? { step: 5, interval: 20, suffix: <>💗</> }
+                    : false,
+              }))}
+              style={{
+                height: '100%',
+                paddingInline: 'calc(calc(100% - 700px) /2)',
+              }}
+              autoScroll={true}
+              roles={{
+                assistant: {
+                  placement: 'start',
+                  footer: (
+                    <div style={{ display: 'flex' }}>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<ReloadOutlined />}
+                      />
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined />}
+                      />
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<LikeOutlined />}
+                      />
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<DislikeOutlined />}
+                      />
+                    </div>
+                  ),
+                  loadingRender: () => <Spin size="small" />,
+                },
+                user: { placement: 'end' },
+              }}
+            />
+          ) : (
+            <Space
+              direction="vertical"
+              size="large"
+              style={{ paddingInline: 'calc(calc(100% - 700px) /2)' }}
+              className="pt-[32px]"
+            >
+              <Welcome
+                variant="borderless"
+                icon={<Image src={require('@/assets/bubble.jpg')} />}
+                title={`你好，${initialState?.nickname}`}
+                description="我是小秋，有什么可以帮助您吗？"
+              />
+              <Flex gap={16}>
+                <Prompts
+                  items={[HOT_TOPICS]}
+                  styles={{
+                    list: { height: '100%' },
+                    item: {
+                      flex: 1,
+                      backgroundImage:
+                        'linear-gradient(123deg, #e5f4ff 0%, #efe7ff 100%)',
+                      borderRadius: 12,
+                      border: 'none',
+                    },
+                    subItem: { padding: 0, background: 'transparent' },
+                  }}
+                  onItemClick={(info) => {
+                    onSubmit(info.data.description as string);
+                  }}
+                />
+                <Prompts
+                  items={[DESIGN_GUIDE]}
+                  styles={{
+                    item: {
+                      flex: 1,
+                      backgroundImage:
+                        'linear-gradient(123deg, #e5f4ff 0%, #efe7ff 100%)',
+                      borderRadius: 12,
+                      border: 'none',
+                    },
+                    subItem: { background: '#ffffffa6' },
+                  }}
+                  onItemClick={(info) => {
+                    onSubmit(info.data.description as string);
+                  }}
+                />
+              </Flex>
+            </Space>
+          )}
+        </div>
+        <div className=" flex-col align-center p-[16px] items-center">
+          {/* 🌟 提示词 */}
+          <Prompts
+            items={SENDER_PROMPTS}
+            onItemClick={(info) => {
+              onSubmit(info.data.description as string);
+            }}
+            styles={{
+              item: { padding: '6px 12px' },
+              list: { justifyContent: 'center' },
+            }}
+            className="w-[100%] max-w-[700px] mx-auto my-5"
+          />
+          {/* 🌟 输入框 */}
+          <Sender
+            value={inputValue}
+            onSubmit={() => {
+              onSubmit(inputValue);
+              setInputValue('');
+            }}
+            onChange={setInputValue}
+            onCancel={() => {
+              abortController.current?.abort();
+            }}
+            loading={loading}
+            className="w-[100%] max-w-[700px] mx-auto"
+            allowSpeech
+            actions={(_, info) => {
+              const { SendButton, LoadingButton, SpeechButton } =
+                info.components;
+              return (
+                <Flex gap={4}>
+                  <SpeechButton className="text-[18px]" />
+                  {loading ? (
+                    <LoadingButton type="default" />
+                  ) : (
+                    <SendButton type="primary" />
+                  )}
+                </Flex>
+              );
+            }}
+            placeholder="Ask or input / use skills"
+          />
+        </div>
+      </Flex>
+      <RenameForm
+        open={renameFormOpen}
+        onCancel={() => {
+          setRenameFormOpen(false);
+        }}
+        values={renameFormValue}
+      />
+    </ProLayout>
   );
 };
 

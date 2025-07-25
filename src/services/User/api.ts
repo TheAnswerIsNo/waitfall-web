@@ -5,7 +5,7 @@ export async function queryUserList(params: {
   current?: number;
   pageSize?: number;
 }) {
-  return request<Result>('/user/list', {
+  return request<Result>('/system/user/list', {
     method: 'GET',
     params: {
       ...params,
@@ -14,14 +14,14 @@ export async function queryUserList(params: {
 }
 
 export async function deleteUser(ids: any[]) {
-  return request<Result>('/user/delete', {
+  return request<Result>('/system/user/delete', {
     method: 'POST',
     data: ids,
   });
 }
 
 export async function createUser(params: User.CreateUserDTO) {
-  return request<Result>('/user/add', {
+  return request<Result>('/system/user/add', {
     method: 'POST',
     data: {
       ...params,

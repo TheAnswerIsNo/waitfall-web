@@ -1,11 +1,10 @@
+import { DEFAULT_NAME } from '@/constants';
 import { PageContainer } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
 
 const HomePage: React.FC = () => {
-  const { title } = useModel('global');
   return (
     <PageContainer ghost>
-      <div>title</div>
+      <div>{DEFAULT_NAME}</div>
     </PageContainer>
   );
 };

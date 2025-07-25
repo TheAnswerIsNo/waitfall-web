@@ -1,55 +1,33 @@
-import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { history, RunTimeLayoutConfig, type RequestConfig } from '@umijs/max';
-import { Button, Dropdown, message, Result } from 'antd';
+import { Button, message, Result } from 'antd';
+import UserMenu from './components/UserMenu/index';
 import {
+  AVATAR_DEFAULT_URL,
   DEFAULT_NAME,
   LocalStorageKey,
   LOGIN_URL,
+  LOGO_URL,
   ResponseCode,
 } from './constants';
-import { logout } from './services/Login/api';
+import { fetchUserInfo } from './services/Login/api';
 
 // 全局初始化数据配置，用于 Layout 用户信息和权限初始化
 // 更多信息见文档：https://umijs.org/docs/api/runtime-config#getinitialstate
-export async function getInitialState(): Promise<{ userInfo: User.UserInfo }> {
-  let userInfo;
-  const fetchUserInfo = async () => {
-    try {
-      const token = localStorage.getItem(LocalStorageKey.TOKEN);
-      const userInfo = JSON.parse(
-        localStorage.getItem(LocalStorageKey.USER_INFO) || '',
-      );
-      if (!token || !userInfo) {
-        history.push(LOGIN_URL);
-      }
-      return { userInfo };
-    } catch (error) {
-      history.push(LOGIN_URL);
-    }
-    return { userInfo: null };
-  };
-  if (history.location.pathname !== '/login') {
-    const res = await fetchUserInfo();
-    userInfo = res.userInfo;
+export async function getInitialState(): Promise<any> {
+  if (history.location.pathname === LOGIN_URL) {
+    return {};
   }
-  return userInfo;
+  return fetchUserInfo().then((res) => {
+    return res.data;
+  });
 }
 
 export const layout: RunTimeLayoutConfig = (initialState) => {
-  const handleLogout = () => {
-    logout().then(() => {
-      // 清除本地存储的 token
-      localStorage.removeItem(LocalStorageKey.TOKEN);
-      // 跳转登录页面
-      history.push(LOGIN_URL);
-    });
-  };
-
-  const userInfo: any = initialState?.initialState;
+  const userInfo = initialState.initialState;
   return {
     // 常用属性
     title: DEFAULT_NAME,
-    logo: 'https://img.alicdn.com/tfs/TB1YHEpwUT1gK0jSZFhXXaAtVXa-28-27.svg',
+    logo: LOGO_URL,
     menu: {
       locale: false,
     },
@@ -67,33 +45,10 @@ export const layout: RunTimeLayoutConfig = (initialState) => {
       />
     ),
     avatarProps: {
-      src:
-        userInfo?.avatar ||
-        'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
+      src: userInfo?.avatar || AVATAR_DEFAULT_URL,
       title: userInfo?.nickname,
       render: (_, defaultDom) => {
-        return (
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  label: '个人信息',
-                  key: 'profile',
-                  icon: <UserOutlined />,
-                },
-                {
-                  label: '退出登录',
-                  key: 'logout',
-                  icon: <LogoutOutlined />,
-                  onClick: handleLogout,
-                },
-              ],
-            }}
-            trigger={['hover']}
-          >
-            {defaultDom}
-          </Dropdown>
-        );
+        return <UserMenu defaultDom={defaultDom} />;
       },
     },
   };
@@ -170,13 +125,13 @@ export const request: RequestConfig = {
       const { code, msg } = response.data as Result;
       switch (code) {
         case ResponseCode.SUCCESS:
-          if (msg !== null) {
+          if (!msg || msg !== 'ok') {
             message.open({
               type: 'success',
               content: msg,
             });
-            break;
           }
+          break;
         case ResponseCode.NOT_LOGIN:
           // 跳转登录页面
           message.open({
