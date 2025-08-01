@@ -43,13 +43,18 @@ export default defineConfig({
       redirect: '/chat',
     },
     {
+      name: '提示词管理',
+      path: '/prompt',
+      component: './Prompt',
+    },
+    {
       name: 'AI对话',
       path: '/chat',
       component: './Chat',
       layout: false,
     },
     {
-      name: '系统设置',
+      name: '系统管理',
       path: '/system',
       routes: [
         {

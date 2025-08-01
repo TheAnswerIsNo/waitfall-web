@@ -19,16 +19,7 @@ import {
   SmileOutlined,
 } from '@ant-design/icons';
 import { ProLayout } from '@ant-design/pro-components';
-import {
-  Attachments,
-  Bubble,
-  Conversations,
-  Prompts,
-  Sender,
-  Welcome,
-  useXAgent,
-  useXChat,
-} from '@ant-design/x';
+import { Bubble, Conversations, Prompts, Sender, Welcome } from '@ant-design/x';
 import { history, useModel } from '@umijs/max';
 import {
   Button,
@@ -41,7 +32,7 @@ import {
   message,
 } from 'antd';
 import dayjs from 'dayjs';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import RenameForm from './components/RenameForm';
 
 type BubbleDataType = {
@@ -165,11 +156,6 @@ const Independent: React.FC = () => {
     DEFAULT_CONVERSATIONS_ITEMS[0].key,
   );
 
-  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState<
-    GetProp<typeof Attachments, 'items'>
-  >([]);
-
   const [inputValue, setInputValue] = useState('');
   const [renameFormOpen, setRenameFormOpen] = useState(false);
   const [renameFormValue, setRenameFormValue] = useState({ id: '', value: '' });
@@ -179,91 +165,95 @@ const Independent: React.FC = () => {
    */
 
   // ==================== Runtime ====================
-  const [agent] = useXAgent<BubbleDataType>({
-    baseURL: 'https://api.x.ant.design/api/llm_siliconflow_deepseekr1',
-    model: 'deepseek-ai/DeepSeek-R1',
-    dangerouslyApiKey: 'Bearer sk-xxxxxxxxxxxxxxxxxxxx',
-  });
-  const loading = agent.isRequesting();
+  // const [agent] = useXAgent<BubbleDataType>({
+  //   baseURL: 'http://localhost:8080/ai/chat/send/stream',
+  //   model: 'qwen3:8b',
+  // });
+  // const loading = agent.isRequesting();
 
-  const { onRequest, messages, setMessages } = useXChat({
-    agent,
-    requestFallback: (_, { error }) => {
-      if (error.name === 'AbortError') {
-        return {
-          content: 'Request is aborted',
-          role: 'assistant',
-        };
-      }
-      return {
-        content: 'Request failed, please try again!',
-        role: 'assistant',
-      };
-    },
-    transformMessage: (info) => {
-      const { originMessage, chunk } = info || {};
-      let currentContent = '';
-      let currentThink = '';
-      try {
-        if (chunk?.data && !chunk?.data.includes('DONE')) {
-          const message = JSON.parse(chunk?.data);
-          currentThink = message?.choices?.[0]?.delta?.reasoning_content || '';
-          currentContent = message?.choices?.[0]?.delta?.content || '';
-        }
-      } catch (error) {
-        console.error(error);
-      }
+  // const { onRequest, messages, setMessages } = useXChat({
+  //   agent,
+  //   requestFallback: (_, { error }) => {
+  //     if (error.name === 'AbortError') {
+  //       return {
+  //         content: 'Request is aborted',
+  //         role: 'assistant',
+  //       };
+  //     }
+  //     return {
+  //       content: 'Request failed, please try again!',
+  //       role: 'assistant',
+  //     };
+  //   },
+  //   transformMessage: (info) => {
+  //     const { originMessage, chunk } = info || {};
+  //     let currentContent = '';
+  //     let currentThink = '';
+  //     try {
+  //       if (chunk?.data && !chunk?.data.includes('DONE')) {
+  //         const message = JSON.parse(chunk?.data);
+  //         currentThink = message?.choices?.[0]?.delta?.reasoning_content || '';
+  //         currentContent = message?.choices?.[0]?.delta?.content || '';
+  //       }
+  //     } catch (error) {
+  //       console.error(error);
+  //     }
 
-      let content = '';
+  //     let content = '';
 
-      if (!originMessage?.content && currentThink) {
-        content = `<think>${currentThink}`;
-      } else if (
-        originMessage?.content?.includes('<think>') &&
-        !originMessage?.content.includes('</think>') &&
-        currentContent
-      ) {
-        content = `${originMessage?.content}</think>${currentContent}`;
-      } else {
-        content = `${
-          originMessage?.content || ''
-        }${currentThink}${currentContent}`;
-      }
-      return {
-        content: content,
-        role: 'assistant',
-      };
-    },
-    resolveAbortController: (controller) => {
-      abortController.current = controller;
-    },
-  });
+  //     if (!originMessage?.content && currentThink) {
+  //       content = `<think>${currentThink}`;
+  //     } else if (
+  //       originMessage?.content?.includes('<think>') &&
+  //       !originMessage?.content.includes('</think>') &&
+  //       currentContent
+  //     ) {
+  //       content = `${originMessage?.content}</think>${currentContent}`;
+  //     } else {
+  //       content = `${originMessage?.content || ''
+  //         }${currentThink}${currentContent}`;
+  //     }
+  //     return {
+  //       content: content,
+  //       role: 'assistant',
+  //     };
+  //   },
+  //   resolveAbortController: (controller) => {
+  //     abortController.current = controller;
+  //   },
+  // });
+
+  const [messages, setMessages] = useState<any[]>();
+  const [loading, setLoading] = useState<boolean>(false);
 
   const onSubmit = (val: string) => {
     if (!val) return;
 
     if (loading) {
-      message.error(
-        'Request is in progress, please wait for the request to complete.',
-      );
+      message.open({
+        type: 'error',
+        content:
+          'Request is in progress, please wait for the request to complete.',
+      });
       return;
     }
-
-    onRequest({
-      stream: true,
-      message: { role: 'user', content: val },
-    });
   };
 
-  useEffect(() => {
-    // history mock
-    if (messages?.length) {
-      setMessageHistory((prev) => ({
-        ...prev,
-        [curConversation]: messages,
-      }));
-    }
-  }, [messages]);
+  //   onRequest({
+  //     stream: true,
+  //     message: { role: 'user', content: val },
+  //   });
+  // };
+
+  // useEffect(() => {
+  //   // history mock
+  //   if (messages?.length) {
+  //     setMessageHistory((prev) => ({
+  //       ...prev,
+  //       [curConversation]: messages,
+  //     }));
+  //   }
+  // }, [messages]);
 
   return (
     <ProLayout
@@ -278,7 +268,7 @@ const Independent: React.FC = () => {
       }}
       layout="side"
       onMenuHeaderClick={() => {
-        history.push('/');
+        history.back();
       }}
       avatarProps={{
         src: initialState?.avatar || AVATAR_DEFAULT_URL,
@@ -319,8 +309,8 @@ const Independent: React.FC = () => {
                   },
                   ...conversations,
                 ]);
-                setCurConversation(now);
-                setMessages([]);
+                // setCurConversation(now);
+                // setMessages([]);
               }}
               type="link"
               className="bg-[#1677ff0f] h-[32px] w-[120px] border-solid border-[#1677ff34] border-[1px]"
@@ -343,8 +333,8 @@ const Independent: React.FC = () => {
                 // The abort execution will trigger an asynchronous requestFallback, which may lead to timing issues.
                 // In future versions, the sessionId capability will be added to resolve this problem.
                 setTimeout(() => {
-                  setCurConversation(val);
-                  setMessages(messageHistory?.[val] || []);
+                  // setCurConversation(val);
+                  // setMessages(messageHistory?.[val] || []);
                 }, 100);
               }}
               groupable
@@ -377,7 +367,7 @@ const Independent: React.FC = () => {
                       setTimeout(() => {
                         if (conversation.key === curConversation) {
                           setCurConversation(newKey);
-                          setMessages(messageHistory?.[newKey] || []);
+                          // setMessages(messageHistory?.[newKey] || []);
                         }
                       }, 200);
                     },
