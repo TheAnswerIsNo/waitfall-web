@@ -2,18 +2,17 @@ import { Input, Modal } from 'antd';
 import { useState } from 'react';
 
 export interface RenameFormProps {
-  onCancel: () => void;
+  close: () => void;
   open: boolean;
   values: { id: string; value: string };
 }
 
-const UpdateForm: React.FC<RenameFormProps> = (props) => {
+const RenameForm: React.FC<RenameFormProps> = (props) => {
   const [value, setValue] = useState(props.values.value);
 
   const handleRename = (id: string, val: string) => {
     // 请求
-
-    props.onCancel();
+    props.close();
   };
 
   return (
@@ -22,7 +21,7 @@ const UpdateForm: React.FC<RenameFormProps> = (props) => {
       open={props.open}
       destroyOnHidden
       centered
-      onCancel={() => props.onCancel()}
+      onCancel={() => props.close()}
       onOk={() => handleRename(props.values.id, value)}
     >
       <Input
@@ -36,4 +35,4 @@ const UpdateForm: React.FC<RenameFormProps> = (props) => {
   );
 };
 
-export default UpdateForm;
+export default RenameForm;

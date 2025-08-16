@@ -16,8 +16,7 @@
     "@ant-design/x": "^1.5.0",
     "@umijs/max": "^4.4.11",
     "antd": "^5.26.6",
-    "antd-style": "^3.7.1",
-    "dayjs": "^1.11.13"
+    "antd-style": "^3.7.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.23",

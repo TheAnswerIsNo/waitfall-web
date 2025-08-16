@@ -7,7 +7,7 @@ import {
 } from '@ant-design/pro-components';
 import { Button, message, Space } from 'antd';
 import React, { useRef, useState } from 'react';
-import CreateForm from './components/CreateForm';
+import CreateForm from './CreateForm';
 
 const UserList: React.FC<unknown> = () => {
   const actionRef = useRef<ActionType>();

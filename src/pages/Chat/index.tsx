@@ -1,62 +1,44 @@
 import UserMenu from '@/components/UserMenu';
 import { AVATAR_DEFAULT_URL, LOGO_URL } from '@/constants';
+import { deleteConversation, queryConversationList, queryMessageList, sendMessageByStream } from '@/services/Chat/api';
 import {
   AppstoreAddOutlined,
   CommentOutlined,
   CopyOutlined,
   DeleteOutlined,
-  DislikeOutlined,
   EditOutlined,
   FileSearchOutlined,
   HeartOutlined,
-  LikeOutlined,
+  MessageOutlined,
   PaperClipOutlined,
   PlusOutlined,
   ProductOutlined,
-  ReloadOutlined,
   RollbackOutlined,
   ScheduleOutlined,
-  SmileOutlined,
+  SmileOutlined
 } from '@ant-design/icons';
 import { ProLayout } from '@ant-design/pro-components';
-import { Bubble, Conversations, Prompts, Sender, Welcome } from '@ant-design/x';
+import { Bubble, Conversations, Prompts, Sender, useXAgent, useXChat, Welcome, XStream } from '@ant-design/x';
+import { SSEFields } from '@ant-design/x/es/x-stream';
 import { history, useModel } from '@umijs/max';
 import {
   Button,
+  Divider,
   Flex,
   type GetProp,
   Image,
-  Space,
-  Spin,
-  Tag,
   message,
+  Modal,
+  Space,
+  Spin
 } from 'antd';
-import dayjs from 'dayjs';
-import React, { useRef, useState } from 'react';
-import RenameForm from './components/RenameForm';
+import React, { useEffect, useRef, useState } from 'react';
+import RenameForm from './RenameForm';
 
 type BubbleDataType = {
   role: string;
   content: string;
 };
-
-const DEFAULT_CONVERSATIONS_ITEMS = [
-  {
-    key: 'default-0',
-    label: 'What is Ant Design X?',
-    group: 'Today',
-  },
-  {
-    key: 'default-1',
-    label: 'How to quickly install and import components?',
-    group: 'Today',
-  },
-  {
-    key: 'default-2',
-    label: 'New AGI Hybrid Interface',
-    group: 'Yesterday',
-  },
-];
 
 const HOT_TOPICS = {
   key: '1',
@@ -144,89 +126,93 @@ const SENDER_PROMPTS: GetProp<typeof Prompts, 'items'> = [
   },
 ];
 
-const Independent: React.FC = () => {
+const AiChat: React.FC = () => {
   const { initialState } = useModel('@@initialState');
-  const abortController = useRef<AbortController>(null);
-  const [messageHistory, setMessageHistory] = useState<Record<string, any>>({});
+  const abortController = useRef<AbortController>();
 
-  const [conversations, setConversations] = useState(
-    DEFAULT_CONVERSATIONS_ITEMS,
-  );
-  const [curConversation, setCurConversation] = useState(
-    DEFAULT_CONVERSATIONS_ITEMS[0].key,
-  );
+  const [conversations, setConversations] = useState([]);
+  const [curConversation, setCurConversation] = useState('');
 
   const [inputValue, setInputValue] = useState('');
   const [renameFormOpen, setRenameFormOpen] = useState(false);
   const [renameFormValue, setRenameFormValue] = useState({ id: '', value: '' });
 
-  /**
-   * 🔔 Please replace the BASE_URL, PATH, MODEL, API_KEY with your own values.
-   */
 
-  // ==================== Runtime ====================
-  // const [agent] = useXAgent<BubbleDataType>({
-  //   baseURL: 'http://localhost:8080/ai/chat/send/stream',
-  //   model: 'qwen3:8b',
-  // });
-  // const loading = agent.isRequesting();
+  // 构建agent
+  const [agent] = useXAgent<BubbleDataType, { message: BubbleDataType }>({
+    request: async ({ message }, { onSuccess, onUpdate },) => {
+      const res = await sendMessageByStream({
+        conversationId: curConversation,
+        message: message?.content,
+        think: false,
+        maxMessages: 20
+      })
 
-  // const { onRequest, messages, setMessages } = useXChat({
-  //   agent,
-  //   requestFallback: (_, { error }) => {
-  //     if (error.name === 'AbortError') {
-  //       return {
-  //         content: 'Request is aborted',
-  //         role: 'assistant',
-  //       };
-  //     }
-  //     return {
-  //       content: 'Request failed, please try again!',
-  //       role: 'assistant',
-  //     };
-  //   },
-  //   transformMessage: (info) => {
-  //     const { originMessage, chunk } = info || {};
-  //     let currentContent = '';
-  //     let currentThink = '';
-  //     try {
-  //       if (chunk?.data && !chunk?.data.includes('DONE')) {
-  //         const message = JSON.parse(chunk?.data);
-  //         currentThink = message?.choices?.[0]?.delta?.reasoning_content || '';
-  //         currentContent = message?.choices?.[0]?.delta?.content || '';
-  //       }
-  //     } catch (error) {
-  //       console.error(error);
-  //     }
+      const chunks: Partial<Record<SSEFields, any>>[] = []; // 用于收集所有数据块
 
-  //     let content = '';
+      // 使用xStream处理流
+      for await (const chunk of XStream({
+        readableStream: res as ReadableStream,
+      })) {
+        const { data } = JSON.parse(chunk?.data)
+        onUpdate({
+          data: {
+            content: data?.content,
+            conversationId: data?.conversationId
+          }
+        });
+        chunks.push(data);
+      }
+      onSuccess(chunks);
 
-  //     if (!originMessage?.content && currentThink) {
-  //       content = `<think>${currentThink}`;
-  //     } else if (
-  //       originMessage?.content?.includes('<think>') &&
-  //       !originMessage?.content.includes('</think>') &&
-  //       currentContent
-  //     ) {
-  //       content = `${originMessage?.content}</think>${currentContent}`;
-  //     } else {
-  //       content = `${originMessage?.content || ''
-  //         }${currentThink}${currentContent}`;
-  //     }
-  //     return {
-  //       content: content,
-  //       role: 'assistant',
-  //     };
-  //   },
-  //   resolveAbortController: (controller) => {
-  //     abortController.current = controller;
-  //   },
-  // });
+    },
+  });
 
-  const [messages, setMessages] = useState<any[]>();
-  const [loading, setLoading] = useState<boolean>(false);
+  const loading = agent.isRequesting();
 
-  const onSubmit = (val: string) => {
+  // 构建xChat
+  const { onRequest, messages, setMessages } = useXChat({
+    agent,
+    requestPlaceholder: {
+      content: (
+        <>
+          <Spin size="small" className='pr-3' />
+          <span>思考中......</span>
+        </>
+      ) as any,
+      role: 'assistant'
+    },
+    transformMessage(info) {
+      // 数据转换
+      const { originMessage, chunk, status } = info || {};
+      let content = '';
+      if (!originMessage?.content) {
+        return {
+          content: chunk?.data?.content,
+          role: 'assistant',
+        }
+      }
+      if (status === 'loading') {
+        if (!curConversation) {
+          setCurConversation(chunk?.data?.conversationId);
+        }
+        content = originMessage?.content + chunk?.data?.content;
+
+      } else if (status === 'success') {
+        content = originMessage?.content;
+      }
+
+      return {
+        content: content,
+        role: 'assistant',
+      };
+    },
+    resolveAbortController: (controller) => {
+      abortController.current = controller;
+    },
+  });
+
+  const onSubmit = async (val: string) => {
     if (!val) return;
 
     if (loading) {
@@ -237,23 +223,55 @@ const Independent: React.FC = () => {
       });
       return;
     }
+    onRequest({
+      stream: true,
+      message: { content: val, role: 'user' },
+    })
   };
 
-  //   onRequest({
-  //     stream: true,
-  //     message: { role: 'user', content: val },
-  //   });
-  // };
+  useEffect(() => {
+    getConversationList();
+    if (!curConversation) {
+      setMessages([]);
+    } else {
+      getHistoryMessageList(curConversation);
+    }
+  }, [curConversation]);
 
-  // useEffect(() => {
-  //   // history mock
-  //   if (messages?.length) {
-  //     setMessageHistory((prev) => ({
-  //       ...prev,
-  //       [curConversation]: messages,
-  //     }));
-  //   }
-  // }, [messages]);
+  const getConversationList = async () => {
+    const { data } = await queryConversationList();
+    // 转换对象
+    const newData = data?.map((item: Chat.ConversationListVO) => ({
+      key: item.id,
+      label: item.title,
+      icon: <MessageOutlined className='mr-1' />,
+    }));
+    setConversations(newData);
+  };
+
+  const getHistoryMessageList = async (conversationId: string) => {
+    const { data } = await queryMessageList(conversationId);
+    const historyMessageList: any = []
+    data.map((item: Chat.MessageListVO) => {
+      historyMessageList.push({
+        id: item.id,
+        message: {
+          content: item.content,
+          role: item.type,
+        },
+        status: 'success',
+      })
+    })
+    setMessages(historyMessageList);
+  }
+
+  const removeConversation = async (conversationId: string) => {
+    await deleteConversation(conversationId);
+    if (curConversation === conversationId) {
+      setCurConversation('');
+    }
+    getConversationList();
+  }
 
   return (
     <ProLayout
@@ -290,54 +308,32 @@ const Independent: React.FC = () => {
       contentStyle={{ height: '100vh', backgroundColor: 'white' }}
       menuExtraRender={() => {
         return (
-          <Flex className="mt-4 justify-between">
-            <Tag
-              color="gold"
-              icon={<CommentOutlined />}
-              className="h-[32px] w-[120px] text-center flex items-center justify-center"
-            >
-              历史对话
-            </Tag>
-            <Button
-              onClick={() => {
-                const now = dayjs().valueOf().toString();
-                setConversations([
-                  {
-                    key: now,
-                    label: `New Conversation ${conversations.length + 1}`,
-                    group: 'Today',
-                  },
-                  ...conversations,
-                ]);
-                // setCurConversation(now);
-                // setMessages([]);
-              }}
-              type="link"
-              className="bg-[#1677ff0f] h-[32px] w-[120px] border-solid border-[#1677ff34] border-[1px]"
-              icon={<PlusOutlined />}
-            ></Button>
-          </Flex>
+          <Button
+            type="link"
+            className="bg-[#1677ff0f] w-[100%] border-solid border-[#1677ff34] border-[1px] font-bold text-left"
+            icon={<PlusOutlined className='font-bold mr-[8px]' />}
+            onClick={() => {
+              setMessages([]);
+              setCurConversation('');
+            }}
+          >
+            新对话
+          </Button>
         );
       }}
       menuContentRender={() => {
         return (
           <>
+            <Divider />
+            <span className="text-[12px] text-[#999] select-none ml-1">历史对话</span>
             {/* 🌟 会话管理 */}
             <Conversations
               items={conversations}
               className="flex-1 overflow-y-auto mt-[12px] p-0 "
               activeKey={curConversation}
-              onActiveChange={async (val) => {
-                // 终止请求
-                abortController.current?.abort();
-                // The abort execution will trigger an asynchronous requestFallback, which may lead to timing issues.
-                // In future versions, the sessionId capability will be added to resolve this problem.
-                setTimeout(() => {
-                  // setCurConversation(val);
-                  // setMessages(messageHistory?.[val] || []);
-                }, 100);
+              onActiveChange={(val) => {
+                setCurConversation(val);
               }}
-              groupable
               styles={{ item: { padding: '0 8px' } }}
               menu={(conversation) => ({
                 items: [
@@ -358,18 +354,18 @@ const Independent: React.FC = () => {
                     key: 'delete',
                     icon: <DeleteOutlined />,
                     danger: true,
-                    onClick: () => {
-                      const newList = conversations.filter(
-                        (item) => item.key !== conversation.key,
-                      );
-                      const newKey = newList?.[0]?.key;
-                      setConversations(newList);
-                      setTimeout(() => {
-                        if (conversation.key === curConversation) {
-                          setCurConversation(newKey);
-                          // setMessages(messageHistory?.[newKey] || []);
-                        }
-                      }, 200);
+                    onClick: async () => {
+                      Modal.confirm({
+                        title: '确定删除对话？',
+                        content: '删除后，聊天记录将不可恢复。',
+                        okText: '删除',
+                        okType: 'danger',
+                        centered: true,
+                        closable: true,
+                        onOk: () => {
+                          removeConversation(conversation.key);
+                        },
+                      });
                     },
                   },
                 ],
@@ -379,59 +375,51 @@ const Independent: React.FC = () => {
         );
       }}
     >
-      <Flex className="flex-col" style={{ height: '100vh' }}>
+      <Flex className="flex-col h-[100%]">
         <div className="flex-1 overflow-auto">
           {messages?.length ? (
             /* 🌟 消息列表 */
             <Bubble.List
               items={messages?.map((i) => ({
-                ...i.message,
-                classNames: {
-                  content:
-                    i.status === 'loading'
-                      ? 'bg-size-[100%_2px] bg-no-repeat bg-bottom'
-                      : '',
-                },
-                typing:
-                  i.status === 'loading'
-                    ? { step: 5, interval: 20, suffix: <>💗</> }
-                    : false,
+                ...i?.message,
+                className: 'mt-5',
               }))}
-              style={{
-                height: '100%',
-                paddingInline: 'calc(calc(100% - 700px) /2)',
-              }}
+              style={{ height: '100%', paddingInline: 'calc(calc(100% - 800px) /2)' }}
               autoScroll={true}
               roles={{
                 assistant: {
                   placement: 'start',
-                  footer: (
+                  footer: (content) => (
                     <div style={{ display: 'flex' }}>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<ReloadOutlined />}
-                      />
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CopyOutlined />}
-                      />
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<LikeOutlined />}
-                      />
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<DislikeOutlined />}
-                      />
+                      <Button type="text" size="small" icon={<CopyOutlined />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(content);
+                          message.success('复制成功');
+                        }} />
                     </div>
                   ),
-                  loadingRender: () => <Spin size="small" />,
+                  // messageRender: (content) => {
+                  //   return <ReactMarkdown>{content}</ReactMarkdown>;
+                  // },
+                  avatar: {
+                    src: require('@/assets/bubble.jpg')
+                  },
                 },
-                user: { placement: 'end' },
+                user: {
+                  placement: 'end',
+                  avatar: {
+                    src: initialState?.avatar || AVATAR_DEFAULT_URL,
+                  },
+                  footer: (content) => (
+                    <div style={{ display: 'flex' }}>
+                      <Button type="text" size="small" icon={<CopyOutlined />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(content);
+                          message.success('复制成功');
+                        }} />
+                    </div>
+                  ),
+                },
               }}
             />
           ) : (
@@ -532,7 +520,7 @@ const Independent: React.FC = () => {
       </Flex>
       <RenameForm
         open={renameFormOpen}
-        onCancel={() => {
+        close={() => {
           setRenameFormOpen(false);
         }}
         values={renameFormValue}
@@ -541,4 +529,5 @@ const Independent: React.FC = () => {
   );
 };
 
-export default Independent;
+export default AiChat;
+
