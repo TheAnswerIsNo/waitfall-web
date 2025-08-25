@@ -16,7 +16,10 @@
     "@ant-design/x": "^1.5.0",
     "@umijs/max": "^4.4.11",
     "antd": "^5.26.6",
-    "antd-style": "^3.7.1"
+    "antd-style": "^3.7.1",
+    "highlight.js": "^11.11.1",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2"
   },
   "devDependencies": {
     "@types/react": "^18.3.23",

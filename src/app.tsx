@@ -16,10 +16,11 @@ import { fetchUserInfo } from './services/Login/api';
 export async function getInitialState(): Promise<any> {
   if (history.location.pathname === LOGIN_URL) {
     return {};
+  } else {
+    return fetchUserInfo().then((res) => {
+      return res.data;
+    });
   }
-  return fetchUserInfo().then((res) => {
-    return res.data;
-  });
 }
 
 export const layout: RunTimeLayoutConfig = (initialState) => {

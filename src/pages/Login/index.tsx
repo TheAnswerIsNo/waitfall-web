@@ -1,3 +1,4 @@
+import { ResponseCode } from '@/constants';
 import { login } from '@/services/Login/api';
 import { LockOutlined, MobileOutlined, UserOutlined } from '@ant-design/icons';
 import {
@@ -27,11 +28,12 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleLogin = (value: any) => {
-    login(value).then(() => {
+  const handleLogin = async (value: any) => {
+    const { code } = await login(value)
+    if (code === ResponseCode.SUCCESS) {
       history.push('/');
       refresh();
-    });
+    }
   };
 
   return (
