@@ -1,10 +1,10 @@
+import Copy from '@/components/Copy';
 import UserMenu from '@/components/UserMenu';
 import { AVATAR_DEFAULT_URL, LOGO_URL } from '@/constants';
 import { deleteConversation, queryConversationList, queryMessageList, sendMessageByStream } from '@/services/Chat/api';
 import {
   AppstoreAddOutlined,
   CommentOutlined,
-  CopyOutlined,
   DeleteOutlined,
   EditOutlined,
   FileSearchOutlined,
@@ -33,14 +33,13 @@ import {
   Spin
 } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from "rehype-highlight";
 import RenameForm from './RenameForm';
 
 type BubbleDataType = {
-  role: string;
-  content: string;
-  conversationId?: string
+  role?: string;
+  content?: string;
+  conversationId?: string;
+  think?: boolean;
 };
 
 const HOT_TOPICS = {
@@ -131,7 +130,7 @@ const SENDER_PROMPTS: GetProp<typeof Prompts, 'items'> = [
 
 const AiChat: React.FC = () => {
   const { initialState } = useModel('@@initialState');
-  let abortController = useRef<AbortController>();
+  const abortController = useRef<AbortController>();
 
   const [conversations, setConversations] = useState([]);
   const [curConversation, setCurConversation] = useState('');
@@ -139,15 +138,15 @@ const AiChat: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [renameFormOpen, setRenameFormOpen] = useState(false);
   const [renameFormValue, setRenameFormValue] = useState({ id: '', value: '' });
-
+  const [deepThink, setDeepThink] = useState(false);
 
   // 构建agent
   const [agent] = useXAgent<BubbleDataType, { message: BubbleDataType }>({
-    request: async ({ message }, { onSuccess, onUpdate }) => {
+    request: async ({ message }, { onSuccess, onUpdate },) => {
       const res = await sendMessageByStream({
         conversationId: message?.conversationId,
         message: message?.content,
-        think: false,
+        think: message?.think,
         maxMessages: 20
       })
 
@@ -161,12 +160,13 @@ const AiChat: React.FC = () => {
         onUpdate({
           data: {
             content: data?.content,
-            conversationId: data?.conversationId,
+            conversationId: data?.conversationId
           }
         });
         chunks.push(data);
       }
       onSuccess(chunks);
+
     },
   });
 
@@ -188,23 +188,22 @@ const AiChat: React.FC = () => {
       // 数据转换
       const { originMessage, chunk, status } = info || {};
       let content = '';
-      if (!originMessage?.content) {
-        if (!curConversation) {
-          getConversationList();
-          setCurConversation(chunk?.data?.conversationId);
-        }
+      if (!originMessage) {
         return {
           content: chunk?.data?.content,
           role: 'assistant',
         }
       }
       if (status === 'loading') {
+        if (!curConversation) {
+          setCurConversation(chunk?.data?.conversationId);
+        }
         content = originMessage?.content + chunk?.data?.content;
+
       } else if (status === 'success') {
         content = originMessage?.content;
-        // 开启计时器 过5s 更新列表
         setTimeout(() => {
-          getConversationList()
+          getConversationList();
         }, 5000);
       }
 
@@ -231,9 +230,18 @@ const AiChat: React.FC = () => {
     }
     onRequest({
       stream: true,
-      message: { content: val, role: 'user', conversationId: curConversation },
+      message: { content: val, role: 'user', conversationId: curConversation, think: deepThink },
     })
   };
+
+  useEffect(() => {
+    getConversationList();
+    if (!curConversation) {
+      setMessages([]);
+    } else {
+      getHistoryMessageList(curConversation);
+    }
+  }, [curConversation]);
 
   const getConversationList = async () => {
     const { data } = await queryConversationList();
@@ -248,30 +256,19 @@ const AiChat: React.FC = () => {
 
   const getHistoryMessageList = async (conversationId: string) => {
     const { data } = await queryMessageList(conversationId);
-    const historyMessageList = data?.map((item: Chat.MessageListVO) => {
-      return {
+    const historyMessageList: any = []
+    data.map((item: Chat.MessageListVO) => {
+      historyMessageList.push({
         id: item.id,
         message: {
           content: item.content,
           role: item.type,
         },
         status: 'success',
-      };
-    }) || [];
+      })
+    })
     setMessages(historyMessageList);
-  };
-
-  useEffect(() => {
-    getConversationList();
-  }, []);
-
-  useEffect(() => {
-    if (!curConversation) {
-      setMessages([])
-    } else {
-      getHistoryMessageList(curConversation);
-    }
-  }, [curConversation]);
+  }
 
   const removeConversation = async (conversationId: string) => {
     await deleteConversation(conversationId);
@@ -341,7 +338,6 @@ const AiChat: React.FC = () => {
               activeKey={curConversation}
               onActiveChange={(val) => {
                 setCurConversation(val);
-                abortController.current?.abort();
               }}
               styles={{ item: { padding: '0 8px' } }}
               menu={(conversation) => ({
@@ -385,73 +381,27 @@ const AiChat: React.FC = () => {
       }}
     >
       <Flex className="flex-col h-[100%]">
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto" >
           {messages?.length ? (
             /* 🌟 消息列表 */
             <Bubble.List
               items={messages?.map((i) => ({
                 ...i?.message,
                 className: 'mt-5',
-                messageRender: (content) => {
-                  try {
-                    // 确保content是字符串，安全处理可能的循环引用
-                    let contentStr = '';
-                    if (typeof content === 'string') {
-                      contentStr = content;
-                    } else if (content && typeof content === 'object') {
-                      // 尝试获取对象中的文本内容，避免JSON.stringify循环引用错误
-                      if (content.content) {
-                        contentStr = typeof content.content === 'string' ? content.content : '';
-                      } else if (content.text) {
-                        contentStr = typeof content.text === 'string' ? content.text : '';
-                      } else if (content.message) {
-                        contentStr = typeof content.message === 'string' ? content.message : '';
-                      } else {
-                        // 如果没有明确的文本字段，尝试安全地提取对象的值
-                        contentStr = Object.values(content)
-                          .filter(val => typeof val === 'string')
-                          .join(' ');
-                      }
-                    }
-                    return <ReactMarkdown rehypePlugins={[rehypeHighlight]}>{contentStr}</ReactMarkdown>;
-                  } catch (error) {
-                    console.error('Markdown parsing error:', error);
-                    // 降级为纯文本显示，使用相同的安全提取逻辑
-                    let safeContent = '';
-                    if (typeof content === 'string') {
-                      safeContent = content;
-                    } else if (content && typeof content === 'object') {
-                      if (content.content) {
-                        safeContent = typeof content.content === 'string' ? content.content : '';
-                      } else if (content.text) {
-                        safeContent = typeof content.text === 'string' ? content.text : '';
-                      } else if (content.message) {
-                        safeContent = typeof content.message === 'string' ? content.message : '';
-                      } else {
-                        safeContent = Object.values(content)
-                          .filter(val => typeof val === 'string')
-                          .join(' ');
-                      }
-                    }
-                    return <div>{safeContent}</div>;
-                  }
-                },
               }))}
-              style={{ height: '100%', paddingInline: 'calc(calc(100% - 1000px) /2)' }}
+              // messageRender: (content) => {
+              //   return <ReactMarkdown>{content}</ReactMarkdown>;
+              // },
+              style={{ height: '100%', paddingInline: 'calc(calc(100% - 800px) /2)', }}
               autoScroll={true}
               roles={{
                 assistant: {
                   placement: 'start',
                   footer: (content) => (
                     <div style={{ display: 'flex' }}>
-                      <Button type="text" size="small" icon={<CopyOutlined />}
-                        onClick={() => {
-                          navigator.clipboard.writeText(content);
-                          message.success('复制成功');
-                        }} />
+                      <Copy content={content} />
                     </div>
                   ),
-
                   avatar: {
                     src: require('@/assets/bubble.jpg')
                   },
@@ -463,11 +413,7 @@ const AiChat: React.FC = () => {
                   },
                   footer: (content) => (
                     <div style={{ display: 'flex' }}>
-                      <Button type="text" size="small" icon={<CopyOutlined />}
-                        onClick={() => {
-                          navigator.clipboard.writeText(content);
-                          message.success('复制成功');
-                        }} />
+                      <Copy content={content} />
                     </div>
                   ),
                 },
@@ -552,7 +498,8 @@ const AiChat: React.FC = () => {
             className="w-[100%] max-w-[700px] mx-auto"
             allowSpeech
             actions={(_, info) => {
-              const { SendButton, LoadingButton, SpeechButton } = info.components;
+              const { SendButton, LoadingButton, SpeechButton } =
+                info.components;
               return (
                 <Flex gap={4}>
                   <SpeechButton className="text-[18px]" />
@@ -580,3 +527,4 @@ const AiChat: React.FC = () => {
 };
 
 export default AiChat;
+
