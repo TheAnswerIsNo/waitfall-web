@@ -15,10 +15,11 @@ import {
   ProductOutlined,
   RollbackOutlined,
   ScheduleOutlined,
-  SmileOutlined
+  SmileOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import { ProLayout } from '@ant-design/pro-components';
-import { Bubble, Conversations, Prompts, Sender, useXAgent, useXChat, Welcome, XStream } from '@ant-design/x';
+import { Bubble, BubbleProps, Conversations, Prompts, Sender, useXAgent, useXChat, Welcome, XStream } from '@ant-design/x';
 import { SSEFields } from '@ant-design/x/es/x-stream';
 import { history, useModel } from '@umijs/max';
 import {
@@ -30,7 +31,8 @@ import {
   message,
   Modal,
   Space,
-  Spin
+  Spin,
+  Typography
 } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
 import RenameForm from './RenameForm';
@@ -199,7 +201,6 @@ const AiChat: React.FC = () => {
           setCurConversation(chunk?.data?.conversationId);
         }
         content = originMessage?.content + chunk?.data?.content;
-
       } else if (status === 'success') {
         content = originMessage?.content;
         setTimeout(() => {
@@ -277,6 +278,18 @@ const AiChat: React.FC = () => {
     }
     getConversationList();
   }
+
+  const markdownit = require('markdown-it')
+  const md = markdownit({ html: true, breaks: true });
+
+  const renderMarkdown: BubbleProps['messageRender'] = (content) => {
+    return (
+      <Typography>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: used in demo */}
+        <div dangerouslySetInnerHTML={{ __html: md.render(content) }} />
+      </Typography>
+    );
+  };
 
   return (
     <ProLayout
@@ -389,9 +402,6 @@ const AiChat: React.FC = () => {
                 ...i?.message,
                 className: 'mt-5',
               }))}
-              // messageRender: (content) => {
-              //   return <ReactMarkdown>{content}</ReactMarkdown>;
-              // },
               style={{ height: '100%', paddingInline: 'calc(calc(100% - 800px) /2)', }}
               autoScroll={true}
               roles={{
@@ -405,6 +415,14 @@ const AiChat: React.FC = () => {
                   avatar: {
                     src: require('@/assets/bubble.jpg')
                   },
+                  messageRender: (content) => {
+                    console.log(content);
+                    // 判断类型，当为string时才渲染
+                    if (typeof content === 'string') {
+                      return renderMarkdown(content);
+                    }
+                    return content;
+                  }
                 },
                 user: {
                   placement: 'end',
@@ -491,27 +509,36 @@ const AiChat: React.FC = () => {
               setInputValue('');
             }}
             onChange={setInputValue}
-            onCancel={() => {
-              abortController.current?.abort();
-            }}
+            onCancel={() => { abortController.current?.abort() }}
             loading={loading}
             className="w-[100%] max-w-[700px] mx-auto"
             allowSpeech
-            actions={(_, info) => {
-              const { SendButton, LoadingButton, SpeechButton } =
-                info.components;
+            placeholder="发消息、输入@选择技能或者/选择文件"
+            actions={false}
+            footer={({ components }) => {
+              const { SendButton, LoadingButton, SpeechButton } = components;
               return (
-                <Flex gap={4}>
-                  <SpeechButton className="text-[18px]" />
-                  {loading ? (
-                    <LoadingButton type="default" />
-                  ) : (
-                    <SendButton type="primary" />
-                  )}
+                <Flex justify="space-between" align="center">
+                  <Flex gap="small" align="center">
+                    <Button type={deepThink ? 'primary' : 'default'} icon={<ThunderboltOutlined />} onClick={() => {
+                      // 切换按钮的选中状态
+                      setDeepThink(think => !think);
+                    }}>
+                      深度思考
+                    </Button>
+                  </Flex>
+                  <Flex gap={4}>
+                    <SpeechButton className="text-[18px]" />
+                    <Divider type="vertical" />
+                    {loading ? (
+                      <LoadingButton type="default" />
+                    ) : (
+                      <SendButton type="primary" />
+                    )}
+                  </Flex>
                 </Flex>
               );
             }}
-            placeholder="Ask or input / use skills"
           />
         </div>
       </Flex>

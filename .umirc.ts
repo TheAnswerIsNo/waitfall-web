@@ -83,7 +83,6 @@ export default defineConfig({
       component: './404',
     },
   ],
-
   npmClient: 'pnpm',
   tailwindcss: {},
 });
