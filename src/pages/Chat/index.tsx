@@ -1,7 +1,13 @@
 import Copy from '@/components/Copy';
+import Markdown from '@/components/Markdown';
 import UserMenu from '@/components/UserMenu';
 import { AVATAR_DEFAULT_URL, LOGO_URL } from '@/constants';
-import { deleteConversation, queryConversationList, queryMessageList, sendMessageByStream } from '@/services/Chat/api';
+import {
+  deleteConversation,
+  queryConversationList,
+  queryMessageList,
+  sendMessageByStream,
+} from '@/services/Chat/api';
 import {
   AppstoreAddOutlined,
   CommentOutlined,
@@ -16,23 +22,32 @@ import {
   RollbackOutlined,
   ScheduleOutlined,
   SmileOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { ProLayout } from '@ant-design/pro-components';
-import { Bubble, BubbleProps, Conversations, Prompts, Sender, useXAgent, useXChat, Welcome, XStream } from '@ant-design/x';
+import {
+  Bubble,
+  BubbleProps,
+  Conversations,
+  Prompts,
+  Sender,
+  useXAgent,
+  useXChat,
+  Welcome,
+  XStream,
+} from '@ant-design/x';
 import { SSEFields } from '@ant-design/x/es/x-stream';
 import { history, useModel } from '@umijs/max';
 import {
+  App,
   Button,
   Divider,
   Flex,
   type GetProp,
   Image,
-  message,
   Modal,
   Space,
   Spin,
-  Typography
 } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
 import RenameForm from './RenameForm';
@@ -131,6 +146,8 @@ const SENDER_PROMPTS: GetProp<typeof Prompts, 'items'> = [
 ];
 
 const AiChat: React.FC = () => {
+  const { message } = App.useApp();
+
   const { initialState } = useModel('@@initialState');
   const abortController = useRef<AbortController>();
 
@@ -142,15 +159,26 @@ const AiChat: React.FC = () => {
   const [renameFormValue, setRenameFormValue] = useState({ id: '', value: '' });
   const [deepThink, setDeepThink] = useState(false);
 
+  const getConversationList = async () => {
+    const { data } = await queryConversationList();
+    // 转换对象
+    const newData = data?.map((item: Chat.ConversationListVO) => ({
+      key: item.id,
+      label: item.title,
+      icon: <MessageOutlined className="mr-1" />,
+    }));
+    setConversations(newData);
+  };
+
   // 构建agent
   const [agent] = useXAgent<BubbleDataType, { message: BubbleDataType }>({
-    request: async ({ message }, { onSuccess, onUpdate },) => {
+    request: async ({ message }, { onSuccess, onUpdate }) => {
       const res = await sendMessageByStream({
         conversationId: message?.conversationId,
         message: message?.content,
         think: message?.think,
-        maxMessages: 20
-      })
+        maxMessages: 20,
+      });
 
       const chunks: Partial<Record<SSEFields, any>>[] = []; // 用于收集所有数据块
 
@@ -158,17 +186,16 @@ const AiChat: React.FC = () => {
       for await (const chunk of XStream({
         readableStream: res as ReadableStream,
       })) {
-        const { data } = JSON.parse(chunk?.data)
+        const { data } = JSON.parse(chunk?.data);
         onUpdate({
           data: {
             content: data?.content,
-            conversationId: data?.conversationId
-          }
+            conversationId: data?.conversationId,
+          },
         });
         chunks.push(data);
       }
       onSuccess(chunks);
-
     },
   });
 
@@ -180,11 +207,11 @@ const AiChat: React.FC = () => {
     requestPlaceholder: {
       content: (
         <>
-          <Spin size="small" className='pr-3' />
+          <Spin size="small" className="pr-3" />
           <span>思考中......</span>
         </>
       ) as any,
-      role: 'assistant'
+      role: 'assistant',
     },
     transformMessage(info) {
       // 数据转换
@@ -194,7 +221,7 @@ const AiChat: React.FC = () => {
         return {
           content: chunk?.data?.content,
           role: 'assistant',
-        }
+        };
       }
       if (status === 'loading') {
         if (!curConversation) {
@@ -231,8 +258,41 @@ const AiChat: React.FC = () => {
     }
     onRequest({
       stream: true,
-      message: { content: val, role: 'user', conversationId: curConversation, think: deepThink },
-    })
+      message: {
+        content: val,
+        role: 'user',
+        conversationId: curConversation,
+        think: deepThink,
+      },
+    });
+  };
+
+  const getHistoryMessageList = async (conversationId: string) => {
+    const { data } = await queryMessageList(conversationId);
+    const historyMessageList: any = [];
+    data.forEach((item: Chat.MessageListVO) => {
+      historyMessageList.push({
+        id: item.id,
+        message: {
+          content: item.content,
+          role: item.type,
+        },
+        status: 'success',
+      });
+    });
+    setMessages(historyMessageList);
+  };
+
+  const removeConversation = async (conversationId: string) => {
+    await deleteConversation(conversationId);
+    if (curConversation === conversationId) {
+      setCurConversation('');
+    }
+    getConversationList();
+  };
+
+  const renderMarkdown: BubbleProps['messageRender'] = (content) => {
+    return <Markdown content={content} />;
   };
 
   useEffect(() => {
@@ -243,53 +303,6 @@ const AiChat: React.FC = () => {
       getHistoryMessageList(curConversation);
     }
   }, [curConversation]);
-
-  const getConversationList = async () => {
-    const { data } = await queryConversationList();
-    // 转换对象
-    const newData = data?.map((item: Chat.ConversationListVO) => ({
-      key: item.id,
-      label: item.title,
-      icon: <MessageOutlined className='mr-1' />,
-    }));
-    setConversations(newData);
-  };
-
-  const getHistoryMessageList = async (conversationId: string) => {
-    const { data } = await queryMessageList(conversationId);
-    const historyMessageList: any = []
-    data.map((item: Chat.MessageListVO) => {
-      historyMessageList.push({
-        id: item.id,
-        message: {
-          content: item.content,
-          role: item.type,
-        },
-        status: 'success',
-      })
-    })
-    setMessages(historyMessageList);
-  }
-
-  const removeConversation = async (conversationId: string) => {
-    await deleteConversation(conversationId);
-    if (curConversation === conversationId) {
-      setCurConversation('');
-    }
-    getConversationList();
-  }
-
-  const markdownit = require('markdown-it')
-  const md = markdownit({ html: true, breaks: true });
-
-  const renderMarkdown: BubbleProps['messageRender'] = (content) => {
-    return (
-      <Typography>
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: used in demo */}
-        <div dangerouslySetInnerHTML={{ __html: md.render(content) }} />
-      </Typography>
-    );
-  };
 
   return (
     <ProLayout
@@ -329,7 +342,7 @@ const AiChat: React.FC = () => {
           <Button
             type="link"
             className="bg-[#1677ff0f] w-[100%] border-solid border-[#1677ff34] border-[1px] font-bold text-left"
-            icon={<PlusOutlined className='font-bold mr-[8px]' />}
+            icon={<PlusOutlined className="font-bold mr-[8px]" />}
             onClick={() => {
               setMessages([]);
               setCurConversation('');
@@ -343,7 +356,9 @@ const AiChat: React.FC = () => {
         return (
           <>
             <Divider />
-            <span className="text-[12px] text-[#999] select-none ml-1">历史对话</span>
+            <span className="text-[12px] text-[#999] select-none ml-1">
+              历史对话
+            </span>
             {/* 🌟 会话管理 */}
             <Conversations
               items={conversations}
@@ -394,15 +409,26 @@ const AiChat: React.FC = () => {
       }}
     >
       <Flex className="flex-col h-[100%]">
-        <div className="flex-1 overflow-auto" >
+        <div className="flex-1 overflow-auto">
           {messages?.length ? (
             /* 🌟 消息列表 */
             <Bubble.List
               items={messages?.map((i) => ({
                 ...i?.message,
                 className: 'mt-5',
+                messageRender: (content) => {
+                  console.log(content);
+                  // 判断类型，当为string时才渲染
+                  if (typeof content === 'string') {
+                    return renderMarkdown(content);
+                  }
+                  return content;
+                },
               }))}
-              style={{ height: '100%', paddingInline: 'calc(calc(100% - 800px) /2)', }}
+              style={{
+                height: '100%',
+                paddingInline: 'calc(calc(100% - 800px) /2)',
+              }}
               autoScroll={true}
               roles={{
                 assistant: {
@@ -413,16 +439,8 @@ const AiChat: React.FC = () => {
                     </div>
                   ),
                   avatar: {
-                    src: require('@/assets/bubble.jpg')
+                    src: require('@/assets/bubble.jpg'),
                   },
-                  messageRender: (content) => {
-                    console.log(content);
-                    // 判断类型，当为string时才渲染
-                    if (typeof content === 'string') {
-                      return renderMarkdown(content);
-                    }
-                    return content;
-                  }
                 },
                 user: {
                   placement: 'end',
@@ -509,7 +527,9 @@ const AiChat: React.FC = () => {
               setInputValue('');
             }}
             onChange={setInputValue}
-            onCancel={() => { abortController.current?.abort() }}
+            onCancel={() => {
+              abortController.current?.abort();
+            }}
             loading={loading}
             className="w-[100%] max-w-[700px] mx-auto"
             allowSpeech
@@ -520,16 +540,19 @@ const AiChat: React.FC = () => {
               return (
                 <Flex justify="space-between" align="center">
                   <Flex gap="small" align="center">
-                    <Button type={deepThink ? 'primary' : 'default'} icon={<ThunderboltOutlined />} onClick={() => {
-                      // 切换按钮的选中状态
-                      setDeepThink(think => !think);
-                    }}>
+                    <Button
+                      type={deepThink ? 'primary' : 'default'}
+                      icon={<ThunderboltOutlined />}
+                      onClick={() => {
+                        // 切换按钮的选中状态
+                        setDeepThink((think) => !think);
+                      }}
+                    >
                       深度思考
                     </Button>
                   </Flex>
                   <Flex gap={4}>
                     <SpeechButton className="text-[18px]" />
-                    <Divider type="vertical" />
                     {loading ? (
                       <LoadingButton type="default" />
                     ) : (
@@ -554,4 +577,3 @@ const AiChat: React.FC = () => {
 };
 
 export default AiChat;
-
